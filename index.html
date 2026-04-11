@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PicoMeasure</title>
+<style>
+  :root {
+    --bg: #000000;
+    --panel: #1a1a1a;
+    --panel-2: #2a2a2a;
+    --accent: #CEB888;
+    --accent-dim: #9d8a5f;
+    --accent-bright: #e6d9a8;
+    --text: #f5f5f5;
+    --muted: #8a8a8a;
+    --ok: #CEB888;
+    --err: #c94a4a;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at top, #1a1a1a 0%, #000000 60%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+  }
+  .brand-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .brand-dot.connected {
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+  .connect-btn {
+    background: var(--accent);
+    color: #000000;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+  }
+  .connect-btn:hover { background: var(--accent-bright); }
+  .connect-btn:active { transform: scale(0.97); }
+  .connect-btn.connected { background: var(--panel-2); color: var(--text); }
+
+  .readout {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    border: 1px solid rgba(206, 184, 136, 0.1);
+  }
+  .readout-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  #dist {
+    font-size: 72px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    background: linear-gradient(180deg, #ffffff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: opacity 0.2s;
+  }
+  #dist.stale { opacity: 0.3; }
+
+  .status-bar {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(206, 184, 136, 0.1);
+    min-height: 50px;
+  }
+  .status-icon {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .status-icon.active { background: var(--accent); animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  #status {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin: 24px 8px 10px;
+  }
+  .units {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    background: var(--panel);
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(206, 184, 136, 0.1);
+  }
+  .units button {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .units button:hover { color: var(--text); }
+  .units button.active {
+    background: var(--accent);
+    color: #000000;
+  }
+
+  .measure-btn {
+    width: 100%;
+    margin-top: 20px;
+    background: linear-gradient(135deg, var(--accent-bright) 0%, var(--accent-dim) 100%);
+    color: #000000;
+    border: none;
+    padding: 20px;
+    border-radius: var(--radius);
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 14px rgba(206, 184, 136, 0.3);
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+  .measure-btn:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(206, 184, 136, 0.45);
+  }
+  .measure-btn:active:not(:disabled) { transform: scale(0.98); }
+  .measure-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .history {
+    margin-top: 28px;
+  }
+  .history-list {
+    background: var(--panel);
+    border-radius: var(--radius);
+    border: 1px solid rgba(206, 184, 136, 0.1);
+    overflow: hidden;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(206, 184, 136, 0.08);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .time { color: var(--muted); font-size: 12px; }
+  .history-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--err);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    transition: transform 0.3s;
+    z-index: 1000;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <span class="brand-dot" id="brandDot"></span>
+      PicoMeasure
+    </div>
+    <button class="connect-btn" id="connect">Connect</button>
+  </header>
+
+  <div class="readout">
+    <div class="readout-label">Distance</div>
+    <div id="dist" class="stale">—</div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-icon" id="statusIcon"></div>
+    <div id="status">Not connected. Tap Connect to begin.</div>
+  </div>
+
+  <div class="section-label">Units</div>
+  <div class="units">
+    <button data-unit="0">cm</button>
+    <button data-unit="1" class="active">m</button>
+    <button data-unit="2">in</button>
+  </div>
+
+  <button class="measure-btn" id="measure" disabled>Measure Now</button>
+
+  <div class="history">
+    <div class="section-label">History</div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">No measurements yet</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SVC  = "12345678-1234-5678-1234-56789abcdef0";
+const DIST = "12345678-1234-5678-1234-56789abcdef1";
+const STAT = "12345678-1234-5678-1234-56789abcdef2";
+const UNIT = "12345678-1234-5678-1234-56789abcdef3";
+const CMD  = "12345678-1234-5678-1234-56789abcdef4";
+
+let device, distChar, statChar, unitChar, cmdChar;
+const dec = new TextDecoder();
+const history = [];
+
+const $ = id => document.getElementById(id);
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3000);
+}
+
+function setStatus(text, active = false) {
+  $("status").textContent = text;
+  $("statusIcon").classList.toggle("active", active);
+}
+
+function setConnected(connected) {
+  $("brandDot").classList.toggle("connected", connected);
+  $("connect").textContent = connected ? "Disconnect" : "Connect";
+  $("connect").classList.toggle("connected", connected);
+  $("measure").disabled = !connected;
+}
+
+function addHistory(value) {
+  history.unshift({ value, time: new Date() });
+  if (history.length > 20) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = $("historyList");
+  if (history.length === 0) {
+    list.innerHTML = '<div class="history-empty">No measurements yet</div>';
+    return;
+  }
+  list.innerHTML = history.map(h => `
+    <div class="history-item">
+      <span>${h.value}</span>
+      <span class="time">${h.time.toLocaleTimeString()}</span>
+    </div>
+  `).join("");
+}
+
+async function connect() {
+  if (!navigator.bluetooth) {
+    toast("Web Bluetooth not supported in this browser");
+    return;
+  }
+  try {
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ name: "PicoMeasure" }],
+      optionalServices: [SVC],
+    });
+    device.addEventListener("gattserverdisconnected", onDisconnect);
+
+    const server = await device.gatt.connect();
+    const svc = await server.getPrimaryService(SVC);
+    distChar = await svc.getCharacteristic(DIST);
+    statChar = await svc.getCharacteristic(STAT);
+    unitChar = await svc.getCharacteristic(UNIT);
+    cmdChar  = await svc.getCharacteristic(CMD);
+
+    await distChar.startNotifications();
+    distChar.addEventListener("characteristicvaluechanged", e => {
+      const v = dec.decode(e.target.value);
+      $("dist").textContent = v;
+      $("dist").classList.remove("stale");
+      addHistory(v);
+    });
+
+    await statChar.startNotifications();
+    statChar.addEventListener("characteristicvaluechanged", e => {
+      const s = dec.decode(e.target.value);
+      setStatus(s, s.toLowerCase().includes("measuring"));
+    });
+
+    try {
+      const unitVal = await unitChar.readValue();
+      const u = unitVal.getUint8(0);
+      document.querySelectorAll(".units button").forEach(b => {
+        b.classList.toggle("active", parseInt(b.dataset.unit) === u);
+      });
+    } catch (e) { /* non-fatal */ }
+
+    setConnected(true);
+    setStatus("Connected. Press button or tap Measure.", false);
+  } catch (e) {
+    if (e.name !== "NotFoundError") {
+      toast("Connection failed: " + e.message);
+    }
+  }
+}
+
+function onDisconnect() {
+  setConnected(false);
+  setStatus("Disconnected", false);
+  $("dist").classList.add("stale");
+  distChar = statChar = unitChar = cmdChar = null;
+}
+
+async function disconnect() {
+  if (device && device.gatt.connected) device.gatt.disconnect();
+}
+
+$("connect").onclick = () => {
+  if (device && device.gatt.connected) disconnect();
+  else connect();
+};
+
+document.querySelectorAll(".units button").forEach(b => {
+  b.onclick = async () => {
+    if (!unitChar) {
+      toast("Connect first");
+      return;
+    }
+    try {
+      await unitChar.writeValue(new Uint8Array([parseInt(b.dataset.unit)]));
+      document.querySelectorAll(".units button").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+    } catch (e) {
+      toast("Failed to set unit");
+    }
+  };
+});
+
+$("measure").onclick = async () => {
+  if (!cmdChar) return;
+  try {
+    await cmdChar.writeValue(new Uint8Array([1]));
+  } catch (e) {
+    toast("Measure command failed");
+  }
+};
+</script>
+</body>
+</html>
