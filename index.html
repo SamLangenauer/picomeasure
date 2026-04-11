@@ -365,8 +365,8 @@ async function connect() {
     setConnected(true);
     setStatus("Connected. Press button or tap Measure.", false);
   } catch (e) {
-    if (e.name !== "NotFoundError") {
-      toast("Connection failed: " + e.message);
+    toast("Error: " + e.name + " - " + e.message);
+    console.error("connect error:", e);
     }
   }
 }
