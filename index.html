@@ -4,267 +4,568 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PicoMeasure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #000000;
-    --panel: #1a1a1a;
-    --panel-2: #2a2a2a;
+    --bg: #0a0908;
+    --bg-2: #141210;
+    --panel: #1a1815;
+    --panel-2: #252220;
+    --line: rgba(206, 184, 136, 0.12);
+    --line-bright: rgba(206, 184, 136, 0.28);
     --accent: #CEB888;
-    --accent-dim: #9d8a5f;
+    --accent-dim: #8a7a56;
     --accent-bright: #e6d9a8;
-    --text: #f5f5f5;
-    --muted: #8a8a8a;
-    --ok: #CEB888;
+    --text: #f5f1e8;
+    --muted: #6b6660;
+    --muted-2: #3d3a36;
     --err: #c94a4a;
-    --radius: 16px;
+    --radius: 4px;
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
     padding: 0;
     min-height: 100vh;
-    background: radial-gradient(ellipse at top, #1a1a1a 0%, #000000 60%);
+    background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-family: "Inter Tight", -apple-system, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
-  .app {
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 24px 20px 40px;
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.35;
+    pointer-events: none;
+    mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
+    z-index: 0;
   }
-  header {
+  body::after {
+    content: "";
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(206, 184, 136, 0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .shell {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .chrome {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 28px;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(10, 9, 8, 0.6);
+    backdrop-filter: blur(8px);
   }
   .brand {
     display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 700;
-    font-size: 20px;
-    letter-spacing: -0.01em;
+    align-items: baseline;
+    gap: 12px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
   }
+  .brand .sep { color: var(--muted-2); }
+  .brand .model { color: var(--muted); }
   .brand-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--muted);
+    display: inline-block;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted-2);
+    margin-right: 6px;
+    vertical-align: middle;
     transition: background 0.3s, box-shadow 0.3s;
   }
   .brand-dot.connected {
     background: var(--accent);
-    box-shadow: 0 0 12px var(--accent);
+    box-shadow: 0 0 10px var(--accent), 0 0 2px var(--accent-bright);
+  }
+
+  .chrome-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .chrome-right .meta { display: none; }
+  @media (min-width: 720px) {
+    .chrome-right .meta { display: flex; gap: 18px; }
+    .chrome-right .meta span b { color: var(--text); font-weight: 500; margin-left: 4px; }
   }
   .connect-btn {
-    background: var(--accent);
-    color: #000000;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    transition: transform 0.1s, background 0.2s;
-  }
-  .connect-btn:hover { background: var(--accent-bright); }
-  .connect-btn:active { transform: scale(0.97); }
-  .connect-btn.connected { background: var(--panel-2); color: var(--text); }
-
-  .readout {
-    background: var(--panel);
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 8px 18px;
     border-radius: var(--radius);
-    padding: 40px 24px;
-    text-align: center;
-    margin-bottom: 20px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    border: 1px solid rgba(206, 184, 136, 0.1);
-  }
-  .readout-label {
-    font-size: 12px;
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .connect-btn:hover { background: var(--accent); color: #000; }
+  .connect-btn:active { transform: scale(0.97); }
+  .connect-btn.connected { border-color: var(--muted-2); color: var(--muted); }
+  .connect-btn.connected:hover { background: var(--err); border-color: var(--err); color: #fff; }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 32px 24px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    align-content: start;
+  }
+  @media (min-width: 960px) {
+    .stage {
+      grid-template-columns: 280px minmax(0, 1fr) 280px;
+      gap: 28px;
+      padding: 48px 36px;
+      align-items: start;
+    }
+  }
+
+  .rail {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  @media (max-width: 959px) {
+    .rail.left { order: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .rail.right { order: 3; }
+    .instrument { order: 1; }
+  }
+  .tile {
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    position: relative;
+  }
+  .tile::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 24px; height: 1px;
+    background: var(--accent);
+  }
+  .tile-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+  }
+  .tile-value {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 14px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .tile-value .dim { color: var(--muted); }
+
+  .instrument {
+    position: relative;
+    background:
+      radial-gradient(ellipse at top, rgba(206, 184, 136, 0.06) 0%, transparent 60%),
+      linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--line-bright);
+    border-radius: 6px;
+    padding: 36px 28px 28px;
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.5) inset,
+      0 20px 60px rgba(0,0,0,0.6),
+      0 0 120px rgba(206, 184, 136, 0.05);
+    overflow: hidden;
+  }
+  .instrument::before,
+  .instrument::after {
+    content: "";
+    position: absolute;
+    width: 14px; height: 14px;
+    border: 1px solid var(--accent);
+  }
+  .instrument::before { top: 10px; left: 10px; border-right: none; border-bottom: none; }
+  .instrument::after { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+
+  .inst-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed var(--line);
+  }
+  .inst-header .tag { color: var(--accent); }
+
+  .readout { text-align: center; padding: 8px 0 20px; }
+  .readout-caption {
+    font-family: "Instrument Serif", serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    margin-bottom: 18px;
   }
   #dist {
-    font-size: 72px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: clamp(84px, 14vw, 168px);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
-    line-height: 1;
-    background: linear-gradient(180deg, #ffffff 0%, var(--accent) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    transition: opacity 0.2s;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    color: var(--accent);
+    text-shadow:
+      0 0 30px rgba(206, 184, 136, 0.25),
+      0 0 80px rgba(206, 184, 136, 0.12);
+    transition: opacity 0.2s, color 0.2s;
+    word-break: break-all;
   }
-  #dist.stale { opacity: 0.3; }
+  #dist.stale { color: var(--muted-2); text-shadow: none; }
+
+  .ticks {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 18px;
+    padding: 0 8px;
+    height: 14px;
+  }
+  .ticks span { width: 1px; background: var(--muted-2); }
+  .ticks span:nth-child(5n+1) { height: 100%; background: var(--accent-dim); }
+  .ticks span:not(:nth-child(5n+1)) { height: 40%; }
 
   .status-bar {
-    background: var(--panel);
-    border-radius: var(--radius);
-    padding: 14px 18px;
-    margin-bottom: 20px;
+    margin-top: 24px;
     display: flex;
     align-items: center;
     gap: 10px;
-    border: 1px solid rgba(206, 184, 136, 0.1);
-    min-height: 50px;
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
   }
   .status-icon {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--muted);
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted-2);
     flex-shrink: 0;
   }
-  .status-icon.active { background: var(--accent); animation: pulse 1.5s ease-in-out infinite; }
+  .status-icon.active {
+    background: var(--accent);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--accent); }
+    50% { opacity: 0.35; box-shadow: 0 0 2px var(--accent); }
   }
-  #status {
-    font-size: 14px;
-    color: var(--muted);
-  }
+  #status { color: var(--muted); flex: 1; }
 
-  .section-label {
-    font-size: 11px;
+  .units-wrap { margin-top: 20px; }
+  .units-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
     color: var(--muted);
-    margin: 24px 8px 10px;
+    margin-bottom: 10px;
   }
   .units {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    background: var(--panel);
-    padding: 6px;
-    border-radius: 12px;
-    border: 1px solid rgba(206, 184, 136, 0.1);
+    gap: 0;
+    border: 1px solid var(--line-bright);
+    border-radius: var(--radius);
+    overflow: hidden;
   }
   .units button {
     background: transparent;
     border: none;
+    border-right: 1px solid var(--line);
     color: var(--muted);
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
+    padding: 14px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+    transition: all 0.15s;
   }
-  .units button:hover { color: var(--text); }
-  .units button.active {
-    background: var(--accent);
-    color: #000000;
-  }
+  .units button:last-child { border-right: none; }
+  .units button:hover { color: var(--text); background: rgba(206, 184, 136, 0.04); }
+  .units button.active { background: var(--accent); color: #000; font-weight: 700; }
 
   .measure-btn {
     width: 100%;
     margin-top: 20px;
-    background: linear-gradient(135deg, var(--accent-bright) 0%, var(--accent-dim) 100%);
-    color: #000000;
+    background: var(--accent);
+    color: #000;
     border: none;
     padding: 20px;
     border-radius: var(--radius);
-    font-size: 17px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
     font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
     cursor: pointer;
-    letter-spacing: 0.02em;
-    box-shadow: 0 4px 14px rgba(206, 184, 136, 0.3);
-    transition: transform 0.1s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.15s;
+  }
+  .measure-btn::before {
+    content: "▸";
+    margin-right: 10px;
+    display: inline-block;
   }
   .measure-btn:hover:not(:disabled) {
-    box-shadow: 0 6px 20px rgba(206, 184, 136, 0.45);
+    background: var(--accent-bright);
+    box-shadow: 0 0 40px rgba(206, 184, 136, 0.4);
   }
-  .measure-btn:active:not(:disabled) { transform: scale(0.98); }
+  .measure-btn:active:not(:disabled) { transform: scale(0.99); }
   .measure-btn:disabled {
-    opacity: 0.4;
+    background: var(--muted-2);
+    color: var(--muted);
     cursor: not-allowed;
-    box-shadow: none;
   }
 
-  .history {
-    margin-top: 28px;
+  .history-tile { padding: 0; overflow: hidden; }
+  .history-header {
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
   }
-  .history-list {
-    background: var(--panel);
-    border-radius: var(--radius);
-    border: 1px solid rgba(206, 184, 136, 0.1);
-    overflow: hidden;
-    max-height: 240px;
-    overflow-y: auto;
+  .history-header .label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
+  .history-header .count {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--accent);
+  }
+  .history-list { max-height: 360px; overflow-y: auto; }
   .history-item {
     display: flex;
     justify-content: space-between;
-    padding: 12px 18px;
-    border-bottom: 1px solid rgba(206, 184, 136, 0.08);
-    font-size: 14px;
+    align-items: baseline;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--line);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
   }
   .history-item:last-child { border-bottom: none; }
-  .history-item .time { color: var(--muted); font-size: 12px; }
+  .history-item .value { color: var(--text); }
+  .history-item .time { color: var(--muted); font-size: 10px; letter-spacing: 0.05em; }
+  .history-item:first-child .value { color: var(--accent); }
   .history-empty {
-    padding: 24px;
+    padding: 28px 18px;
     text-align: center;
-    color: var(--muted);
+    color: var(--muted-2);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .history-list::-webkit-scrollbar { width: 4px; }
+  .history-list::-webkit-scrollbar-track { background: transparent; }
+  .history-list::-webkit-scrollbar-thumb { background: var(--muted-2); border-radius: 2px; }
+
+  footer {
+    padding: 18px 28px;
+    border-top: 1px solid var(--line);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  footer .left { color: var(--muted); }
+  footer .right {
+    font-style: italic;
+    font-family: "Instrument Serif", serif;
     font-size: 13px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--muted);
   }
 
   .toast {
     position: fixed;
-    bottom: 24px;
+    bottom: 40px;
     left: 50%;
-    transform: translateX(-50%) translateY(100px);
+    transform: translateX(-50%) translateY(120px);
     background: var(--err);
     color: white;
     padding: 12px 20px;
-    border-radius: 10px;
-    font-size: 14px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    transition: transform 0.3s;
+    border-radius: var(--radius);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.4);
     z-index: 1000;
+    max-width: calc(100vw - 48px);
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 720px) {
+    .chrome { padding: 14px 18px; }
+    .brand .model { display: none; }
+    .stage { padding: 20px 16px; }
+    .instrument { padding: 24px 18px 20px; }
+    .inst-header { margin-bottom: 20px; }
+    #dist { font-size: clamp(68px, 18vw, 96px); }
+    footer { padding: 14px 18px; }
+    footer .right { display: none; }
+  }
 </style>
 </head>
 <body>
-<div class="app">
-  <header>
+<div class="shell">
+
+  <div class="chrome">
     <div class="brand">
-      <span class="brand-dot" id="brandDot"></span>
-      PicoMeasure
+      <span><span class="brand-dot" id="brandDot"></span>PICOMEASURE</span>
+      <span class="sep">/</span>
+      <span class="model">TF-LUNA · BLE</span>
     </div>
-    <button class="connect-btn" id="connect">Connect</button>
-  </header>
-
-  <div class="readout">
-    <div class="readout-label">Distance</div>
-    <div id="dist" class="stale">—</div>
-  </div>
-
-  <div class="status-bar">
-    <div class="status-icon" id="statusIcon"></div>
-    <div id="status">Not connected. Tap Connect to begin.</div>
-  </div>
-
-  <div class="section-label">Units</div>
-  <div class="units">
-    <button data-unit="0">cm</button>
-    <button data-unit="1" class="active">m</button>
-    <button data-unit="2">in</button>
-  </div>
-
-  <button class="measure-btn" id="measure" disabled>Measure Now</button>
-
-  <div class="history">
-    <div class="section-label">History</div>
-    <div class="history-list" id="historyList">
-      <div class="history-empty">No measurements yet</div>
+    <div class="chrome-right">
+      <div class="meta">
+        <span>DEV<b id="devName">—</b></span>
+        <span>LINK<b id="linkState">OFFLINE</b></span>
+      </div>
+      <button class="connect-btn" id="connect">Connect</button>
     </div>
   </div>
+
+  <div class="stage">
+
+    <div class="rail left">
+      <div class="tile">
+        <div class="tile-label">Session</div>
+        <div class="tile-value" id="sessionTime">00:00:00</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Samples</div>
+        <div class="tile-value"><span id="sampleCount">0</span><span class="dim"> / 20</span></div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Last</div>
+        <div class="tile-value" id="lastTime">—</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Range</div>
+        <div class="tile-value" id="rangeStats">—</div>
+      </div>
+    </div>
+
+    <div class="instrument">
+      <div class="inst-header">
+        <span class="tag">◉ DISTANCE READOUT</span>
+        <span id="instMode">STANDBY</span>
+      </div>
+
+      <div class="readout">
+        <div class="readout-caption">measured distance</div>
+        <div id="dist" class="stale">—</div>
+        <div class="ticks">
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <div class="status-icon" id="statusIcon"></div>
+        <div id="status">NOT CONNECTED · TAP CONNECT TO BEGIN</div>
+      </div>
+
+      <div class="units-wrap">
+        <div class="units-label">Units</div>
+        <div class="units">
+          <button data-unit="0">cm</button>
+          <button data-unit="1" class="active">m</button>
+          <button data-unit="2">in</button>
+        </div>
+      </div>
+
+      <button class="measure-btn" id="measure" disabled>Measure Now</button>
+    </div>
+
+    <div class="rail right">
+      <div class="tile history-tile">
+        <div class="history-header">
+          <span class="label">History</span>
+          <span class="count" id="historyCount">0 / 20</span>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">No samples</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <span class="left">TF-LUNA · RP2350 · BLE 5.0</span>
+    <span class="right">ranging, quietly precise.</span>
+  </footer>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -277,6 +578,8 @@ const UNIT = "12345678-1234-5678-1234-56789abcdef3";
 const CMD  = "12345678-1234-5678-1234-56789abcdef4";
 
 let device, distChar, statChar, unitChar, cmdChar;
+let sessionStart = null;
+let sessionTimer = null;
 const dec = new TextDecoder();
 const history = [];
 
@@ -290,8 +593,9 @@ function toast(msg) {
 }
 
 function setStatus(text, active = false) {
-  $("status").textContent = text;
+  $("status").textContent = text.toUpperCase();
   $("statusIcon").classList.toggle("active", active);
+  $("instMode").textContent = active ? "● MEASURING" : (device && device.gatt && device.gatt.connected ? "● READY" : "STANDBY");
 }
 
 function setConnected(connected) {
@@ -299,24 +603,69 @@ function setConnected(connected) {
   $("connect").textContent = connected ? "Disconnect" : "Connect";
   $("connect").classList.toggle("connected", connected);
   $("measure").disabled = !connected;
+  $("linkState").textContent = connected ? "ACTIVE" : "OFFLINE";
+  if (connected) {
+    sessionStart = Date.now();
+    sessionTimer = setInterval(updateSessionTime, 1000);
+    $("devName").textContent = (device && device.name) ? device.name.slice(0, 10).toUpperCase() : "LINK";
+  } else {
+    if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
+    $("sessionTime").textContent = "00:00:00";
+    $("devName").textContent = "—";
+    $("instMode").textContent = "STANDBY";
+  }
+}
+
+function updateSessionTime() {
+  if (!sessionStart) return;
+  const s = Math.floor((Date.now() - sessionStart) / 1000);
+  const hh = String(Math.floor(s / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  $("sessionTime").textContent = `${hh}:${mm}:${ss}`;
+}
+
+function parseNum(s) {
+  const m = s.match(/-?\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+
+function updateStats() {
+  $("sampleCount").textContent = history.length;
+  $("historyCount").textContent = `${history.length} / 20`;
+  if (history.length === 0) {
+    $("lastTime").textContent = "—";
+    $("rangeStats").textContent = "—";
+    return;
+  }
+  $("lastTime").textContent = history[0].time.toLocaleTimeString([], {hour12: false});
+  const nums = history.map(h => parseNum(h.value)).filter(n => n !== null);
+  if (nums.length > 0) {
+    const min = Math.min(...nums).toFixed(2);
+    const max = Math.max(...nums).toFixed(2);
+    $("rangeStats").textContent = `${min} — ${max}`;
+  } else {
+    $("rangeStats").textContent = "—";
+  }
 }
 
 function addHistory(value) {
   history.unshift({ value, time: new Date() });
   if (history.length > 20) history.pop();
   renderHistory();
+  updateStats();
 }
 
 function renderHistory() {
   const list = $("historyList");
   if (history.length === 0) {
-    list.innerHTML = '<div class="history-empty">No measurements yet</div>';
+    list.innerHTML = '<div class="history-empty">No samples</div>';
     return;
   }
   list.innerHTML = history.map(h => `
     <div class="history-item">
-      <span>${h.value}</span>
-      <span class="time">${h.time.toLocaleTimeString()}</span>
+      <span class="value">${h.value}</span>
+      <span class="time">${h.time.toLocaleTimeString([], {hour12: false})}</span>
     </div>
   `).join("");
 }
@@ -363,11 +712,11 @@ async function connect() {
     } catch (e) { /* non-fatal */ }
 
     setConnected(true);
-    setStatus("Connected. Press button or tap Measure.", false);
+    setStatus("Connected · Press button or tap Measure", false);
   } catch (e) {
-    toast("Error: " + e.name + " - " + e.message);
+    toast("Error: " + e.name + " — " + e.message);
     console.error("connect error:", e);
-    }
+  }
 }
 
 function onDisconnect() {
