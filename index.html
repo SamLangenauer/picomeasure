@@ -236,7 +236,7 @@
   }
   .inst-header .tag { color: var(--accent); }
 
-  .readout { text-align: center; padding: 8px 0 20px; }
+  .readout { text-align: center; padding: 8px 0 20px; overflow: hidden; }
   .readout-caption {
     font-family: "Instrument Serif", serif;
     font-style: italic;
@@ -247,19 +247,40 @@
   }
   #dist {
     font-family: "JetBrains Mono", monospace;
-    font-size: clamp(84px, 14vw, 168px);
+    font-size: clamp(48px, 9.5vw, 90px);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.04em;
-    line-height: 0.9;
+    line-height: 0.95;
     color: var(--accent);
     text-shadow:
       0 0 30px rgba(206, 184, 136, 0.25),
       0 0 80px rgba(206, 184, 136, 0.12);
     transition: opacity 0.2s, color 0.2s;
-    word-break: break-all;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    max-width: 100%;
   }
   #dist.stale { color: var(--muted-2); text-shadow: none; }
+
+  .measure-time {
+    margin-top: 14px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    min-height: 14px;
+    transition: color 0.2s, text-shadow 0.2s;
+    font-variant-numeric: tabular-nums;
+  }
+  .measure-time.running {
+    color: var(--accent);
+    text-shadow: 0 0 10px rgba(206, 184, 136, 0.4);
+  }
+  .measure-time.final { color: var(--accent-dim); }
+  .measure-time.err { color: var(--err); }
 
   .ticks {
     display: flex;
@@ -552,7 +573,7 @@
     .stage { padding: 20px 16px; }
     .instrument { padding: 24px 18px 20px; }
     .inst-header { margin-bottom: 20px; }
-    #dist { font-size: clamp(68px, 18vw, 96px); }
+    #dist { font-size: clamp(52px, 14vw, 80px); }
     footer { padding: 14px 18px; }
     footer .right { display: none; }
   }
@@ -606,6 +627,7 @@
       <div class="readout">
         <div class="readout-caption">measured distance</div>
         <div id="dist" class="stale">—</div>
+        <div class="measure-time" id="measureTime">&nbsp;</div>
         <div class="ticks">
           <span></span><span></span><span></span><span></span><span></span>
           <span></span><span></span><span></span><span></span><span></span>
@@ -678,6 +700,16 @@ let device, distChar, statChar, unitChar, cmdChar;
 let sessionStart = null;
 let sessionTimer = null;
 let lastRawValue = null;
+
+// --- Integrated round-trip timing ---
+// measureStart is set when a measurement is initiated from the site (Measure Now).
+// It's cleared when the matching distance notification arrives. If a notification
+// arrives with measureStart === null, it was a physical button press on the Pico
+// and we can't time it -- we just leave the previous elapsed display alone.
+let measureStart = null;
+let measureRaf = null;
+let measureTimeout = null;
+
 const dec = new TextDecoder();
 const history = [];
 
@@ -690,7 +722,7 @@ function getCalibrationCm() {
 
 // Parses a Pico reading like "1.23 m", "45.0 cm", "12.5 in",
 // applies the cm-offset, and re-emits in the same unit.
-// Passes through anything it can't parse (e.g. "ERR").
+// Passes through anything it can't parse (e.g. "No reading").
 function applyCalibration(rawStr) {
   if (typeof rawStr !== "string") return rawStr;
   const offsetCm = getCalibrationCm();
@@ -705,7 +737,7 @@ function applyCalibration(rawStr) {
   let cm;
   if (unit === "m") cm = num * 100;
   else if (unit === "in") cm = num * 2.54;
-  else cm = num; // cm or unitless -> treat as cm
+  else cm = num;
 
   cm += offsetCm;
 
@@ -713,6 +745,60 @@ function applyCalibration(rawStr) {
   if (unit === "in") return (cm / 2.54).toFixed(2) + " in";
   if (unit === "cm") return cm.toFixed(1) + " cm";
   return cm.toFixed(1);
+}
+
+function fmtElapsed(ms) {
+  if (ms < 1000) return ms.toFixed(0) + " MS";
+  return (ms / 1000).toFixed(3) + " S";
+}
+
+function tickMeasureTime() {
+  if (measureStart === null) return;
+  const elapsed = performance.now() - measureStart;
+  $("measureTime").textContent = "\u25F7 " + fmtElapsed(elapsed);
+  measureRaf = requestAnimationFrame(tickMeasureTime);
+}
+
+function startMeasureTiming() {
+  clearMeasureTiming();
+  measureStart = performance.now();
+  const el = $("measureTime");
+  el.classList.remove("final", "err");
+  el.classList.add("running");
+  tickMeasureTime();
+  // Safety net: if no notification arrives within 5s, show timeout.
+  measureTimeout = setTimeout(() => {
+    if (measureStart === null) return;
+    clearMeasureTiming();
+    const e2 = $("measureTime");
+    e2.classList.remove("running", "final");
+    e2.classList.add("err");
+    e2.textContent = "\u25F7 TIMEOUT";
+    toast("No reading received within 5s");
+  }, 5000);
+}
+
+function stopMeasureTiming() {
+  if (measureStart === null) return;
+  const elapsed = performance.now() - measureStart;
+  clearMeasureTiming();
+  const el = $("measureTime");
+  el.classList.remove("running", "err");
+  el.classList.add("final");
+  el.textContent = "\u25F7 " + fmtElapsed(elapsed);
+}
+
+function clearMeasureTiming() {
+  if (measureRaf) { cancelAnimationFrame(measureRaf); measureRaf = null; }
+  if (measureTimeout) { clearTimeout(measureTimeout); measureTimeout = null; }
+  measureStart = null;
+}
+
+function resetMeasureTimeDisplay() {
+  clearMeasureTiming();
+  const el = $("measureTime");
+  el.classList.remove("running", "final", "err");
+  el.innerHTML = "&nbsp;";
 }
 
 function toast(msg) {
@@ -725,7 +811,7 @@ function toast(msg) {
 function setStatus(text, active = false) {
   $("status").textContent = text.toUpperCase();
   $("statusIcon").classList.toggle("active", active);
-  $("instMode").textContent = active ? "● MEASURING" : (device && device.gatt && device.gatt.connected ? "● READY" : "STANDBY");
+  $("instMode").textContent = active ? "\u25CF MEASURING" : (device && device.gatt && device.gatt.connected ? "\u25CF READY" : "STANDBY");
 }
 
 function setConnected(connected) {
@@ -741,8 +827,9 @@ function setConnected(connected) {
   } else {
     if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
     $("sessionTime").textContent = "00:00:00";
-    $("devName").textContent = "—";
+    $("devName").textContent = "\u2014";
     $("instMode").textContent = "STANDBY";
+    resetMeasureTimeDisplay();
   }
 }
 
@@ -764,8 +851,8 @@ function updateStats() {
   $("sampleCount").textContent = history.length;
   $("historyCount").textContent = `${history.length} / 20`;
   if (history.length === 0) {
-    $("lastTime").textContent = "—";
-    $("rangeStats").textContent = "—";
+    $("lastTime").textContent = "\u2014";
+    $("rangeStats").textContent = "\u2014";
     return;
   }
   $("lastTime").textContent = history[0].time.toLocaleTimeString([], {hour12: false});
@@ -773,9 +860,9 @@ function updateStats() {
   if (nums.length > 0) {
     const min = Math.min(...nums).toFixed(2);
     const max = Math.max(...nums).toFixed(2);
-    $("rangeStats").textContent = `${min} — ${max}`;
+    $("rangeStats").textContent = `${min} \u2014 ${max}`;
   } else {
-    $("rangeStats").textContent = "—";
+    $("rangeStats").textContent = "\u2014";
   }
 }
 
@@ -821,6 +908,10 @@ async function connect() {
 
     await distChar.startNotifications();
     distChar.addEventListener("characteristicvaluechanged", e => {
+      // Stop the round-trip timer as early as possible -- before any decoding
+      // or DOM work -- so the displayed elapsed time is as accurate as possible.
+      // If measureStart is null (physical button press on the Pico), no-op.
+      if (measureStart !== null) stopMeasureTiming();
       const v = dec.decode(e.target.value);
       lastRawValue = v;
       $("dist").textContent = applyCalibration(v);
@@ -843,9 +934,9 @@ async function connect() {
     } catch (e) { /* non-fatal */ }
 
     setConnected(true);
-    setStatus("Connected · Press button or tap Measure", false);
+    setStatus("Connected \u00B7 Press button or tap Measure", false);
   } catch (e) {
-    toast("Error: " + e.name + " — " + e.message);
+    toast("Error: " + e.name + " \u2014 " + e.message);
     console.error("connect error:", e);
   }
 }
@@ -884,9 +975,17 @@ document.querySelectorAll(".units button").forEach(b => {
 
 $("measure").onclick = async () => {
   if (!cmdChar) return;
+  // Start the round-trip timer BEFORE the BLE write so elapsed captures
+  // the full path: writeValue -> Pico receives -> samples+trim+avg -> notify.
+  startMeasureTiming();
   try {
     await cmdChar.writeValue(new Uint8Array([1]));
   } catch (e) {
+    clearMeasureTiming();
+    const el = $("measureTime");
+    el.classList.remove("running", "final");
+    el.classList.add("err");
+    el.textContent = "\u25F7 WRITE FAILED";
     toast("Measure command failed");
   }
 };
