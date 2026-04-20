@@ -336,6 +336,91 @@
   .units button:hover { color: var(--text); background: rgba(206, 184, 136, 0.04); }
   .units button.active { background: var(--accent); color: #000; font-weight: 700; }
 
+  .cal-wrap { margin-top: 20px; }
+  .cal-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .cal-label .hint {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--muted-2);
+    text-transform: none;
+    font-style: italic;
+    font-family: "Instrument Serif", serif;
+  }
+  .cal-input-group {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--line-bright);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.25);
+    transition: border-color 0.15s;
+  }
+  .cal-input-group:focus-within { border-color: var(--accent); }
+  .cal-input-group input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 14px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    outline: none;
+    min-width: 0;
+    -moz-appearance: textfield;
+  }
+  .cal-input-group input::-webkit-outer-spin-button,
+  .cal-input-group input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .cal-input-group .cal-unit {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    border-left: 1px solid var(--line);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: rgba(0, 0, 0, 0.2);
+  }
+  .cal-input-group .cal-clear {
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--line);
+    color: var(--muted);
+    padding: 0 12px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 14px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+  }
+  .cal-input-group .cal-clear:hover { color: var(--err); background: rgba(201, 74, 74, 0.08); }
+  .cal-active-badge {
+    display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    margin-left: 6px;
+    vertical-align: middle;
+    box-shadow: 0 0 6px var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .cal-active-badge.on { opacity: 1; }
+
   .measure-btn {
     width: 100%;
     margin-top: 20px;
@@ -368,74 +453,6 @@
     background: var(--muted-2);
     color: var(--muted);
     cursor: not-allowed;
-  }
-
-  .timer-wrap {
-    margin-top: 12px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 12px 14px;
-    background: rgba(0, 0, 0, 0.25);
-  }
-  .timer-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 10px;
-  }
-  .timer-head .lbl {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .timer-display {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 20px;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-    color: var(--muted);
-    letter-spacing: 0.02em;
-    transition: color 0.2s, text-shadow 0.2s;
-  }
-  .timer-display.running {
-    color: var(--accent);
-    text-shadow: 0 0 12px rgba(206, 184, 136, 0.4);
-  }
-  .timer-display.final {
-    color: var(--accent-bright);
-    text-shadow: 0 0 8px rgba(206, 184, 136, 0.25);
-  }
-  .time-btn {
-    width: 100%;
-    background: transparent;
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    padding: 12px;
-    border-radius: var(--radius);
-    font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .time-btn:hover:not(:disabled) {
-    background: var(--accent);
-    color: #000;
-  }
-  .time-btn:active:not(:disabled) { transform: scale(0.99); }
-  .time-btn:disabled {
-    border-color: var(--muted-2);
-    color: var(--muted-2);
-    cursor: not-allowed;
-  }
-  .time-btn.timing {
-    border-color: var(--muted-2);
-    color: var(--muted);
-    cursor: wait;
   }
 
   .history-tile { padding: 0; overflow: hidden; }
@@ -612,15 +629,19 @@
         </div>
       </div>
 
-      <button class="measure-btn" id="measure" disabled>Measure Now</button>
-
-      <div class="timer-wrap">
-        <div class="timer-head">
-          <span class="lbl">Round-Trip Timer</span>
-          <span class="timer-display" id="timerDisplay">—</span>
+      <div class="cal-wrap">
+        <div class="cal-label">
+          <span>Calibration Offset<span class="cal-active-badge" id="calBadge"></span></span>
+          <span class="hint">± signed, in centimeters</span>
         </div>
-        <button class="time-btn" id="timeBtn" disabled>▸ Time Measurement</button>
+        <div class="cal-input-group">
+          <input type="number" id="calOffset" step="0.1" value="0" placeholder="0.0" inputmode="decimal">
+          <span class="cal-unit">cm</span>
+          <button class="cal-clear" id="calClear" title="Reset to 0">×</button>
+        </div>
       </div>
+
+      <button class="measure-btn" id="measure" disabled>Measure Now</button>
     </div>
 
     <div class="rail right">
@@ -656,58 +677,42 @@ const CMD  = "12345678-1234-5678-1234-56789abcdef4";
 let device, distChar, statChar, unitChar, cmdChar;
 let sessionStart = null;
 let sessionTimer = null;
-let timingStart = null;
-let timingRaf = null;
-let timingTimeout = null;
+let lastRawValue = null;
 const dec = new TextDecoder();
 const history = [];
 
 const $ = id => document.getElementById(id);
 
-function formatElapsed(ms) {
-  if (ms < 1000) return ms.toFixed(1) + " ms";
-  return (ms / 1000).toFixed(3) + " s";
+function getCalibrationCm() {
+  const v = parseFloat($("calOffset").value);
+  return isNaN(v) ? 0 : v;
 }
 
-function startTiming() {
-  timingStart = performance.now();
-  const disp = $("timerDisplay");
-  disp.classList.remove("final");
-  disp.classList.add("running");
-  $("timeBtn").classList.add("timing");
-  $("timeBtn").disabled = true;
-  const loop = () => {
-    if (timingStart === null) return;
-    const elapsed = performance.now() - timingStart;
-    disp.textContent = formatElapsed(elapsed);
-    timingRaf = requestAnimationFrame(loop);
-  };
-  loop();
-}
+// Parses a Pico reading like "1.23 m", "45.0 cm", "12.5 in",
+// applies the cm-offset, and re-emits in the same unit.
+// Passes through anything it can't parse (e.g. "ERR").
+function applyCalibration(rawStr) {
+  if (typeof rawStr !== "string") return rawStr;
+  const offsetCm = getCalibrationCm();
+  if (offsetCm === 0) return rawStr;
 
-function stopTiming() {
-  if (timingStart === null) return null;
-  const elapsed = performance.now() - timingStart;
-  timingStart = null;
-  if (timingRaf) { cancelAnimationFrame(timingRaf); timingRaf = null; }
-  if (timingTimeout) { clearTimeout(timingTimeout); timingTimeout = null; }
-  const disp = $("timerDisplay");
-  disp.classList.remove("running");
-  disp.classList.add("final");
-  disp.textContent = formatElapsed(elapsed);
-  $("timeBtn").classList.remove("timing");
-  $("timeBtn").disabled = !(device && device.gatt && device.gatt.connected);
-  return elapsed;
-}
+  const match = rawStr.match(/(-?\d+(?:\.\d+)?)\s*(cm|m|in)?/i);
+  if (!match) return rawStr;
 
-function resetTiming() {
-  if (timingRaf) { cancelAnimationFrame(timingRaf); timingRaf = null; }
-  if (timingTimeout) { clearTimeout(timingTimeout); timingTimeout = null; }
-  timingStart = null;
-  const disp = $("timerDisplay");
-  disp.classList.remove("running", "final");
-  disp.textContent = "—";
-  $("timeBtn").classList.remove("timing");
+  const num = parseFloat(match[1]);
+  const unit = (match[2] || "").toLowerCase();
+
+  let cm;
+  if (unit === "m") cm = num * 100;
+  else if (unit === "in") cm = num * 2.54;
+  else cm = num; // cm or unitless -> treat as cm
+
+  cm += offsetCm;
+
+  if (unit === "m")  return (cm / 100).toFixed(2) + " m";
+  if (unit === "in") return (cm / 2.54).toFixed(2) + " in";
+  if (unit === "cm") return cm.toFixed(1) + " cm";
+  return cm.toFixed(1);
 }
 
 function toast(msg) {
@@ -728,7 +733,6 @@ function setConnected(connected) {
   $("connect").textContent = connected ? "Disconnect" : "Connect";
   $("connect").classList.toggle("connected", connected);
   $("measure").disabled = !connected;
-  $("timeBtn").disabled = !connected;
   $("linkState").textContent = connected ? "ACTIVE" : "OFFLINE";
   if (connected) {
     sessionStart = Date.now();
@@ -739,7 +743,6 @@ function setConnected(connected) {
     $("sessionTime").textContent = "00:00:00";
     $("devName").textContent = "—";
     $("instMode").textContent = "STANDBY";
-    resetTiming();
   }
 }
 
@@ -766,7 +769,7 @@ function updateStats() {
     return;
   }
   $("lastTime").textContent = history[0].time.toLocaleTimeString([], {hour12: false});
-  const nums = history.map(h => parseNum(h.value)).filter(n => n !== null);
+  const nums = history.map(h => parseNum(applyCalibration(h.value))).filter(n => n !== null);
   if (nums.length > 0) {
     const min = Math.min(...nums).toFixed(2);
     const max = Math.max(...nums).toFixed(2);
@@ -791,7 +794,7 @@ function renderHistory() {
   }
   list.innerHTML = history.map(h => `
     <div class="history-item">
-      <span class="value">${h.value}</span>
+      <span class="value">${applyCalibration(h.value)}</span>
       <span class="time">${h.time.toLocaleTimeString([], {hour12: false})}</span>
     </div>
   `).join("");
@@ -818,9 +821,9 @@ async function connect() {
 
     await distChar.startNotifications();
     distChar.addEventListener("characteristicvaluechanged", e => {
-      stopTiming();  // capture round-trip as early as possible
       const v = dec.decode(e.target.value);
-      $("dist").textContent = v;
+      lastRawValue = v;
+      $("dist").textContent = applyCalibration(v);
       $("dist").classList.remove("stale");
       addHistory(v);
     });
@@ -888,34 +891,35 @@ $("measure").onclick = async () => {
   }
 };
 
-$("timeBtn").onclick = async () => {
-  if (!cmdChar) return;
-  // Start the visible timer BEFORE the BLE write so the displayed
-  // elapsed time captures the full round-trip (write -> measure -> notify).
-  startTiming();
-  // Safety: if no notification arrives within 5s, mark as timeout.
-  timingTimeout = setTimeout(() => {
-    if (timingStart === null) return;
-    if (timingRaf) { cancelAnimationFrame(timingRaf); timingRaf = null; }
-    timingStart = null;
-    timingTimeout = null;
-    const disp = $("timerDisplay");
-    disp.classList.remove("running", "final");
-    disp.classList.add("final");
-    disp.style.color = "var(--err)";
-    disp.textContent = "TIMEOUT";
-    setTimeout(() => { disp.style.color = ""; }, 2500);
-    $("timeBtn").classList.remove("timing");
-    $("timeBtn").disabled = !(device && device.gatt && device.gatt.connected);
-    toast("No reading received within 5s");
-  }, 5000);
-  try {
-    await cmdChar.writeValue(new Uint8Array([1]));
-  } catch (e) {
-    resetTiming();
-    toast("Timed measure failed");
+// --- Calibration offset ---
+const CAL_KEY = "picomeasure_cal_cm";
+
+function refreshCalibratedViews() {
+  $("calBadge").classList.toggle("on", getCalibrationCm() !== 0);
+  if (lastRawValue !== null) {
+    $("dist").textContent = applyCalibration(lastRawValue);
   }
+  renderHistory();
+  updateStats();
+}
+
+$("calOffset").addEventListener("input", () => {
+  try { localStorage.setItem(CAL_KEY, $("calOffset").value); } catch (e) {}
+  refreshCalibratedViews();
+});
+
+$("calClear").onclick = () => {
+  $("calOffset").value = "0";
+  try { localStorage.setItem(CAL_KEY, "0"); } catch (e) {}
+  refreshCalibratedViews();
 };
+
+// Load persisted calibration on page load
+try {
+  const saved = localStorage.getItem(CAL_KEY);
+  if (saved !== null && saved !== "") $("calOffset").value = saved;
+} catch (e) {}
+refreshCalibratedViews();
 </script>
 </body>
 </html>
